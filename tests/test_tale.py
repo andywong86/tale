@@ -4,11 +4,11 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pulse.config import DEFAULT_CRON, load_tasks
-from pulse.executor import execute
-from pulse.models import DueTask, Task
-from pulse.scheduler import find_due
-from pulse.storage import update_last_run
+from tale.config import DEFAULT_CRON, load_tasks
+from tale.executor import execute
+from tale.models import DueTask, Task
+from tale.scheduler import find_due
+from tale.storage import update_last_run
 
 
 def task_file(tmp_path: Path, content: str) -> Path:
@@ -159,7 +159,7 @@ def test_execute_writes_output_stats_and_last_run(tmp_path: Path) -> None:
 
     result = execute(DueTask(task, (occurrence,)))
 
-    logs = list(tmp_path.glob("pulse_job_*.log"))
+    logs = list(tmp_path.glob("tale_job_*.log"))
     assert result == [0]
     assert len(logs) == 1
     text = logs[0].read_text(encoding="utf-8")

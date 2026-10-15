@@ -17,13 +17,13 @@ def execute(due: DueTask) -> list[int]:
     for occurrence in occurrences:
         started = datetime.now(tz=ZoneInfo("UTC"))
         stamp = started.strftime("%Y%m%dT%H%M%S%z")
-        log_path = due.task.directory / f"pulse_{due.task.name}_{stamp}.log"
+        log_path = due.task.directory / f"tale_{due.task.name}_{stamp}.log"
         with log_path.open("w", encoding="utf-8") as log:
             log.write(
                 f"task = {due.task.name}\ncommand = {due.task.cmd}\ndir = {due.task.directory}\n"
             )
             log.write(
-                f"scheduled = {occurrence.isoformat()}\nstarted = {started.isoformat()}\n\n"
+                f"scheduled = {occurrence.isoformat()}\nstarted = {started.isoformat()}\n---\n"
             )
             # Flush metadata before the child writes directly to this file.
             log.flush()

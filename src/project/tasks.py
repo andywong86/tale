@@ -10,7 +10,7 @@ def _run(*args: str) -> None:
 
 
 def test() -> None:
-    _run("pytest", "--cov=pulse", "--cov-report=term-missing")
+    _run("pytest", "--cov=tale", "--cov-report=term-missing")
 
 
 def typecheck() -> None:

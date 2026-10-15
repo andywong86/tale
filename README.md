@@ -1,8 +1,8 @@
-# Pulse
+# Tale
 
-Pulse discovers tasks from `~/.config/pulse/*.toml` and runs due tasks on demand.
+Tale discovers tasks from `~/.config/tale/*.toml` and runs due tasks on demand.
 
-Example `~/.config/pulse/tasks.toml`:
+Example `~/.config/tale/tasks.toml`:
 
 ```toml
 [backup]
@@ -20,10 +20,10 @@ cmd = "python cleanup.py"
 schedule occurrences are not unexpectedly replayed.
 
 ```sh
-uv run pulse                 # inspect each due task and confirm interactively
-uv run pulse --yes           # run all due tasks without prompting
-uv run pulse --dry-run       # show due tasks without running them
-uv run pulse backup          # consider only one task
+uv run tale                 # inspect each due task and confirm interactively
+uv run tale --yes           # run all due tasks without prompting
+uv run tale --dry-run       # show due tasks without running them
+uv run tale backup          # consider only one task
 ```
 
 With `once = true`, all missed schedule occurrences are collapsed into one

@@ -1,5 +1,5 @@
 [project]
-name = "pulse"
+name = "tale"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.scripts]
-pulse = "pulse:main"
+tale = "tale:main"
 build = "project.tasks:build"
 test = "project.tasks:test"
 typecheck = "project.tasks:typecheck"

@@ -15,7 +15,7 @@ class ConfigError(ValueError):
 
 
 def config_directory() -> Path:
-    return Path.home() / ".config" / "pulse"
+    return Path.home() / ".config" / "tale"
 
 
 def load_tasks(directory: Path | None = None) -> tuple[list[Task], list[str]]:

@@ -3,13 +3,13 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 
-from pulse.config import load_tasks
-from pulse.executor import execute
-from pulse.scheduler import find_due
+from tale.config import load_tasks
+from tale.executor import execute
+from tale.scheduler import find_due
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run due Pulse tasks on demand.")
+    parser = argparse.ArgumentParser(description="Run due Tale tasks on demand.")
     parser.add_argument("task", nargs="*", help="task names to consider (default: all)")
     parser.add_argument(
         "-y", "--yes", action="store_true", help="run without prompting"
