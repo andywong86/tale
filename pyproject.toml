@@ -3,6 +3,8 @@ name = "tale"
 version = "0.1.0"
 description = "Run overdue cron-scheduled tasks on demand"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Andy Wong", email = "andywong86@gmail.com" }
 ]
