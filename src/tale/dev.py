@@ -6,7 +6,9 @@ import subprocess
 
 
 def _run(*args: str) -> None:
-    raise SystemExit(subprocess.run(args, check=False).returncode)
+    result = subprocess.run(args, check=False)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
 
 
 def test() -> None:

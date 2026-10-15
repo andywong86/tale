@@ -1,7 +1,7 @@
 [project]
 name = "tale"
 version = "0.1.0"
-description = "Add your description here"
+description = "Run overdue cron-scheduled tasks on demand"
 readme = "README.md"
 authors = [
     { name = "Andy Wong", email = "andywong86@gmail.com" }
@@ -10,16 +10,15 @@ requires-python = ">=3.14"
 dependencies = [
     "croniter>=6.2.4",
     "tomlkit>=0.13.3",
-    "types-croniter>=6.2.4.20261006",
 ]
 
 [project.scripts]
 tale = "tale:main"
-build = "project.tasks:build"
-test = "project.tasks:test"
-typecheck = "project.tasks:typecheck"
-lint = "project.tasks:lint"
-format = "project.tasks:format"
+build = "tale.dev:build"
+test = "tale.dev:test"
+typecheck = "tale.dev:typecheck"
+lint = "tale.dev:lint"
+format = "tale.dev:format"
 
 [build-system]
 requires = ["uv_build>=0.12.20,<0.13.0"]
@@ -31,5 +30,6 @@ dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.0.0",
     "ruff>=0.17.0",
+    "types-croniter>=6.2.4.20261006",
 ]
 

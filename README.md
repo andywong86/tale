@@ -29,3 +29,14 @@ uv run tale backup          # consider only one task
 With `once = true`, all missed schedule occurrences are collapsed into one
 execution. Without it, each missed occurrence is executed. The `last_run` value is stored directly in the task's TOML file. Combined
 command output is written to the task's `dir` directory.
+
+## Development
+
+```sh
+uv sync
+uv run test        # tests with coverage
+uv run typecheck  # mypy
+uv run format     # format code
+uv run lint       # lint and apply fixes
+uv run build      # run all four steps, stopping on failure
+```

@@ -409,7 +409,6 @@ source = { editable = "." }
 dependencies = [
     { name = "croniter" },
     { name = "tomlkit" },
-    { name = "types-croniter" },
 ]
 
 [package.dev-dependencies]
@@ -418,13 +417,13 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "types-croniter" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "croniter", specifier = ">=6.2.4" },
     { name = "tomlkit", specifier = ">=0.13.3" },
-    { name = "types-croniter", specifier = ">=6.2.4.20261006" },
 ]
 
 [package.metadata.requires-dev]
@@ -433,6 +432,7 @@ dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "ruff", specifier = ">=0.17.0" },
+    { name = "types-croniter", specifier = ">=6.2.4.20261006" },
 ]
 
 [[package]]
