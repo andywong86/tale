@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from croniter import croniter
 
@@ -18,6 +18,20 @@ def find_due(
 
     for task in tasks:
         try:
+            if task.interval is not None:
+                last = task.last_run
+                if last is None:
+                    due.append(DueTask(task, (now,)))
+                else:
+                    # Compare absolute elapsed time, including across DST changes.
+                    if now.utcoffset() is not None and last.utcoffset() is not None:
+                        elapsed = now.astimezone(UTC) - last.astimezone(UTC)
+                    else:
+                        elapsed = now - last
+                    if elapsed >= task.interval:
+                        due.append(DueTask(task, (now,)))
+                continue
+
             if task.cron is None:
                 if task.last_run is None:
                     due.append(DueTask(task, (now,)))

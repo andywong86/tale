@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .duration import parse_duration
 from .models import Task
 
 
@@ -52,6 +53,19 @@ def _task_from_table(name: str, raw: Any, source: Path) -> Task:
     if not isinstance(cmd, str) or not cmd.strip():
         raise ConfigError("cmd is required")
 
+    if "cron" in raw and "interval" in raw:
+        raise ConfigError("cron and interval are mutually exclusive")
+
+    interval = None
+    if "interval" in raw:
+        raw_interval = raw["interval"]
+        if not isinstance(raw_interval, str):
+            raise ConfigError("interval must be a duration string such as '6h'")
+        try:
+            interval = parse_duration(raw_interval)
+        except ValueError as exc:
+            raise ConfigError(f"invalid interval: {exc}") from exc
+
     cron = raw.get("cron")
     if "cron" in raw and (not isinstance(cron, str) or not cron.strip()):
         raise ConfigError("cron must be a non-empty string")
@@ -74,4 +88,4 @@ def _task_from_table(name: str, raw: Any, source: Path) -> Task:
     if last_run is not None and not isinstance(last_run, datetime):
         raise ConfigError("last_run must be an ISO datetime")
 
-    return Task(name, cmd, cron, directory, collapse, source, last_run)
+    return Task(name, cmd, cron, directory, collapse, source, last_run, interval)

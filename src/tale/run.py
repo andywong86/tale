@@ -35,12 +35,14 @@ def main(argv: list[str] | None = None) -> int:
         print("No tasks are due.")
         return 1 if config_errors or schedule_errors else 0
 
+    execution_failed = False
     for item in due:
         count = item.run_count
-        missed = len(item.occurrences)
-        print(
-            f"{item.task.name}: {item.task.cmd} ({missed} missed, will run {count} time(s))"
-        )
+        if item.task.cron is not None:
+            detail = f"{len(item.occurrences)} missed, will run {count} time(s)"
+        else:
+            detail = f"due, will run {count} time(s)"
+        print(f"{item.task.name}: {item.task.cmd} ({detail})")
         if args.dry_run:
             continue
         if not args.yes:
@@ -49,9 +51,11 @@ def main(argv: list[str] | None = None) -> int:
                 print("Skipped.")
                 continue
         results = execute(item)
+        if any(code != 0 for code in results):
+            execution_failed = True
         print(f"Finished {item.task.name}: {results}")
 
-    return 1 if config_errors or schedule_errors else 0
+    return 1 if config_errors or schedule_errors or execution_failed else 0
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import tempfile
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -17,8 +18,14 @@ def execute(due: DueTask) -> list[int]:
     for occurrence in occurrences:
         started = datetime.now(tz=ZoneInfo("UTC"))
         stamp = started.strftime("%Y%m%dT%H%M%S%z")
-        log_path = due.task.directory / f"tale_{due.task.name}_{stamp}.log"
-        with log_path.open("w", encoding="utf-8") as log:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix=f"tale_{due.task.name}_{stamp}_",
+            suffix=".log",
+            dir=due.task.directory,
+            delete=False,
+        ) as log:
             log.write(
                 f"task = {due.task.name}\ncommand = {due.task.cmd}\ndir = {due.task.directory}\n"
             )
@@ -44,6 +51,7 @@ def execute(due: DueTask) -> list[int]:
         results.append(completed.returncode)
         if completed.returncode != 0:
             break
-        update_last_run(due.task.source, due.task.name, occurrence)
+        last_run = finished if due.task.interval is not None else occurrence
+        update_last_run(due.task.source, due.task.name, last_run)
 
     return results

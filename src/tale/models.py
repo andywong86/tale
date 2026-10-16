@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 
@@ -14,6 +14,7 @@ class Task:
     collapse: bool
     source: Path
     last_run: datetime | None
+    interval: timedelta | None = None
 
 
 @dataclass(frozen=True)
