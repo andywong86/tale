@@ -63,6 +63,34 @@ occur, and `0` otherwise (including when nothing is due or tasks are skipped).
 A failed command stops that task's catch-up runs without advancing `last_run`
 for the failed occurrence; other due tasks are still processed.
 
+## Cleanup
+
+```sh
+uv run tale --cleanup --dry-run  # preview obsolete tasks without changes
+uv run tale --cleanup            # confirm deletion for each obsolete task
+uv run tale --cleanup --yes      # delete without prompting
+uv run tale --cleanup backup     # consider only tasks named backup
+```
+
+Cleanup is a separate mode: it does not execute tasks or initialize `last_run`.
+It removes tasks that cannot execute again:
+
+- Single-execution tasks with `last_run` set.
+- Tasks whose `not_after` has passed (including the exclusive next-midnight
+  boundary for date-only deadlines).
+- Cron/interval tasks with no remaining scheduled occurrence between their
+  progress and `not_after`, even if the deadline is still in the future.
+
+Pending catch-up occurrences are retained while the execution window remains
+open. Future `not_before` bounds alone do not make a task obsolete. A never-run
+interval starts at `not_before`, or immediately if absent; a never-run cron task
+would initialize at its first possible invocation without replaying history.
+
+Deleting a task also removes its nested tables, including `env`. Remaining tasks
+and comments are preserved; if no tables or settings remain, the TOML file is
+deleted (comments alone do not keep it). Invalid tasks/settings are retained and
+errors produce exit code `1`. Command logs are not deleted.
+
 ## Environment variables
 
 Tasks inherit Tale's environment. Add an `env` table to override or add variables

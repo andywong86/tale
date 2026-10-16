@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 
+from tale.cleanup import cleanup
 from tale.config import load_tasks
 from tale.executor import execute
 from tale.scheduler import find_due
@@ -15,7 +16,14 @@ def main(argv: list[str] | None = None) -> int:
         "-y", "--yes", action="store_true", help="run without prompting"
     )
     parser.add_argument(
-        "--dry-run", action="store_true", help="show due tasks without running them"
+        "--dry-run",
+        action="store_true",
+        help="preview execution or cleanup without changes",
+    )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="delete obsolete tasks instead of running tasks",
     )
     args = parser.parse_args(argv)
 
@@ -27,6 +35,10 @@ def main(argv: list[str] | None = None) -> int:
         tasks = [task for task in tasks if task.name in wanted]
 
     now = datetime.now().astimezone()
+    if args.cleanup:
+        status = cleanup(tasks, now, dry_run=args.dry_run, yes=args.yes)
+        return 1 if config_errors or status else 0
+
     due, schedule_errors = find_due(tasks, now, persist_initial=not args.dry_run)
     for error in schedule_errors:
         print(f"error: {error}")
