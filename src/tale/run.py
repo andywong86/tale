@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import datetime
 
 from tale.cleanup import cleanup
-from tale.config import load_tasks
+from tale.config import config_directory, load_tasks
 from tale.executor import execute
+from tale.locking import LockError, invocation_lock
 from tale.scheduler import find_due
 
 
@@ -27,6 +29,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    try:
+        with invocation_lock(config_directory()):
+            return _run(args)
+    except LockError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+
+def _run(args: argparse.Namespace) -> int:
     tasks, config_errors = load_tasks()
     for error in config_errors:
         print(f"error: {error}")

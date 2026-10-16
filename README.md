@@ -63,6 +63,25 @@ occur, and `0` otherwise (including when nothing is due or tasks are skipped).
 A failed command stops that task's catch-up runs without advancing `last_run`
 for the failed occurrence; other due tasks are still processed.
 
+## Locking
+
+On macOS/Unix, every invocation acquires an exclusive, non-blocking advisory lock
+at `~/.config/tale/.lock` before reading task configuration. It is held through
+confirmation prompts, execution, progress updates, and cleanup. Dry runs use the
+same lock for a consistent view. If another invocation holds it, Tale immediately
+prints `Another Tale invocation is active.` to stderr and exits with code `1`.
+Lock-file or locking errors also fail closed with exit code `1`.
+
+The OS releases the lock when Tale exits or crashes. The `.lock` file intentionally
+remains; its presence does not mean a process is active. Do not delete or replace
+it while Tale is running. Even a dry run may create the configuration directory
+and lock file, but does not change task definitions or runtime metadata.
+
+The lock coordinates Tale processes sharing the same configuration directory,
+not manual edits or unrelated programs. Use a local filesystem with reliable
+advisory locking. Child commands do not inherit the lock; if Tale crashes while
+a command survives, a later invocation could overlap that surviving command.
+
 ## Cleanup
 
 ```sh
