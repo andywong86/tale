@@ -35,7 +35,7 @@ last_run = 2026-01-01T00:00:00Z
     assert len(tasks) == 1
     assert tasks[0].cron is None
     assert tasks[0].directory == Path.home()
-    assert tasks[0].collapse is False
+    assert tasks[0].collapse is True
     assert tasks[0].last_run == datetime(2026, 1, 1, tzinfo=UTC)
     assert tasks[0].source == path
 
@@ -47,6 +47,15 @@ def test_load_tasks_reads_collapse(tmp_path: Path) -> None:
 
     assert errors == []
     assert tasks[0].collapse is True
+
+
+def test_load_tasks_reads_explicit_collapse_false(tmp_path: Path) -> None:
+    task_file(tmp_path, '[job]\ncmd = "echo hello"\ncollapse = false\n')
+
+    tasks, errors = load_tasks(tmp_path)
+
+    assert errors == []
+    assert tasks[0].collapse is False
 
 
 def test_load_tasks_rejects_invalid_collapse(tmp_path: Path) -> None:
@@ -201,6 +210,7 @@ def test_find_due_returns_all_missed_occurrences(tmp_path: Path) -> None:
 cmd = "echo hello"
 cron = "* * * * *"
 last_run = 2026-01-01T11:57:00Z
+collapse = false
 """,
     )
     tasks, _ = load_tasks(tmp_path)

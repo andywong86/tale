@@ -75,7 +75,7 @@ def _task_from_table(name: str, raw: Any, source: Path) -> Task:
         raise ConfigError("dir must be a string")
     directory = Path(raw_dir).expanduser() if raw_dir else Path.home()
 
-    collapse = raw.get("collapse", False)
+    collapse = raw.get("collapse", True)
     if not isinstance(collapse, bool):
         raise ConfigError("collapse must be true or false")
 

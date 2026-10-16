@@ -49,8 +49,8 @@ uv run tale --dry-run       # show due tasks without running them
 uv run tale backup          # consider only one task
 ```
 
-With `collapse = true`, all missed schedule occurrences are collapsed into one
-execution. Without it, each missed occurrence is executed. The `last_run` value is stored directly in the task's TOML file. Combined
+`collapse` defaults to `true`: all missed cron schedule occurrences are collapsed
+into one execution. Set `collapse = false` to execute each missed occurrence. The `last_run` value is stored directly in the task's TOML file. Combined
 command output is written to a unique log file in the task's `dir` directory
 for each execution, including catch-up runs.
 
