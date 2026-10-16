@@ -63,6 +63,34 @@ occur, and `0` otherwise (including when nothing is due or tasks are skipped).
 A failed command stops that task's catch-up runs without advancing `last_run`
 for the failed occurrence; other due tasks are still processed.
 
+## Environment variables
+
+Tasks inherit Tale's environment. Add an `env` table to override or add variables
+for an individual task:
+
+```toml
+[backup]
+cmd = "python backup.py"
+
+[backup.env]
+BACKUP_DIR = "/mnt/backup"
+LOG_LEVEL = "info"
+```
+
+An inline table is also supported: `env = { LOG_LEVEL = "info" }` inside the task.
+All values must be strings (quote numbers and booleans). Empty strings are valid.
+Names must be non-empty and contain neither `=` nor NUL; values cannot contain
+NUL. Overrides do not change Tale's environment or affect other tasks.
+
+Values are passed literally: `"$HOME/backup"` is not expanded automatically.
+The command's shell can reference variables normally, for example
+`cmd = 'python backup.py --destination "$BACKUP_DIR"'`.
+
+Tale does not include `env` values in log metadata or task previews, but commands
+can expose them through their own output. Values are stored as plain text in the
+TOML file; prefer inheriting sensitive variables from Tale's environment. Inline
+assignments in `cmd` are logged as part of the command, so avoid secrets there.
+
 ## Execution windows
 
 All task types accept optional `not_before` and `not_after` bounds:

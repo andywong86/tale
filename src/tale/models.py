@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -18,6 +18,7 @@ class Task:
     not_before: datetime | None = None
     not_after: datetime | None = None
     not_after_exclusive: bool = False
+    env: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

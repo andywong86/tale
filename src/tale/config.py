@@ -76,6 +76,21 @@ def _task_from_table(name: str, raw: Any, source: Path) -> Task:
         raise ConfigError("dir must be a string")
     directory = Path(raw_dir).expanduser() if raw_dir else Path.home()
 
+    raw_env = raw.get("env", {})
+    if not isinstance(raw_env, dict):
+        raise ConfigError("env must be a table of string values")
+    env: dict[str, str] = {}
+    for key, value in raw_env.items():
+        if not key or "=" in key or "\0" in key:
+            raise ConfigError(
+                "env names must be non-empty and contain neither = nor NUL"
+            )
+        if not isinstance(value, str):
+            raise ConfigError("env values must be strings")
+        if "\0" in value:
+            raise ConfigError("env values must not contain NUL")
+        env[key] = value
+
     collapse = raw.get("collapse", True)
     if not isinstance(collapse, bool):
         raise ConfigError("collapse must be true or false")
@@ -123,4 +138,5 @@ def _task_from_table(name: str, raw: Any, source: Path) -> Task:
         not_before,
         not_after,
         not_after_exclusive,
+        env,
     )

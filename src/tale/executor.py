@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 from datetime import datetime
@@ -46,6 +47,7 @@ def execute(due: DueTask) -> list[int]:
                 due.task.cmd,
                 shell=True,
                 cwd=due.task.directory,
+                env={**os.environ, **due.task.env},
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 check=False,
