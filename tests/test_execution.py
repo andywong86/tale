@@ -70,6 +70,28 @@ def test_cli_exit_status_and_continued_execution(
         assert f"exit_code = {0 if cmd == 'true' else 1}" in logs[0].read_text()
 
 
+@pytest.mark.parametrize("args", [[], ["--yes"], ["--dry-run"]])
+def test_blank_line_between_tasks_only_in_interactive_mode(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], args: list[str]
+) -> None:
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    tasks = [
+        Task(name, "true", None, tmp_path, True, tmp_path / "tasks.toml", None)
+        for name in ("first", "second")
+    ]
+    due = [DueTask(task, (now,)) for task in tasks]
+    with (
+        patch("tale.run.load_tasks", return_value=(tasks, [])),
+        patch("tale.run.find_due", return_value=(due, [])),
+        patch("tale.run.execute", return_value=[0]),
+        patch("builtins.input", return_value="n"),
+    ):
+        assert main(args) == 0
+    output = capsys.readouterr().out
+    assert output.startswith("first:")
+    assert ("\n\nsecond:" in output) is (not args)
+
+
 def test_cli_detects_failure_after_successful_catch_up_run(tmp_path: Path) -> None:
     now = datetime(2026, 1, 1, 12, tzinfo=UTC)
     task = Task("job", "true", "* * * * *", tmp_path, False, tmp_path / "x.toml", now)

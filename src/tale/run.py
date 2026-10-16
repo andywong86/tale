@@ -10,6 +10,7 @@ from tale.executor import execute
 from tale.listing import list_tasks
 from tale.locking import LockError, invocation_lock
 from tale.scheduler import find_due
+from tale.summary import ExecutionSummary
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -65,12 +66,19 @@ def _run(args: argparse.Namespace) -> int:
     for error in schedule_errors:
         print(f"error: {error}")
 
+    summary = ExecutionSummary(
+        not_due=max(0, len(tasks) - len(due) - len(schedule_errors)),
+        errors=len(config_errors) + len(schedule_errors),
+        executions_not_run=sum(item.run_count for item in due),
+    )
     if not due:
         print("No tasks are due.")
-        return 1 if config_errors or schedule_errors else 0
+        summary.print()
+        return 1 if summary.errors else 0
 
-    execution_failed = False
-    for item in due:
+    for index, item in enumerate(due):
+        if index and not args.yes and not args.dry_run:
+            print()
         count = item.run_count
         if item.task.cron is not None or item.task.interval is not None:
             detail = f"{len(item.occurrences)} missed, will run {count} time(s)"
@@ -78,21 +86,23 @@ def _run(args: argparse.Namespace) -> int:
             detail = f"due, will run {count} time(s)"
         print(f"{item.task.name}: {item.task.cmd} ({detail})")
         if args.dry_run:
+            summary.deferred += 1
             continue
         if not args.yes:
             answer = input("Run this task? [y/N] ").strip().lower()
             if answer not in {"y", "yes"}:
                 print("Skipped.")
+                summary.skipped += 1
                 continue
         results = execute(item)
-        if any(code != 0 for code in results):
-            execution_failed = True
+        summary.record_results(count, results)
         if results:
             print(f"Finished {item.task.name}: {results}")
         else:
             print(f"Skipped {item.task.name}: outside its execution window.")
 
-    return 1 if config_errors or schedule_errors or execution_failed else 0
+    summary.print()
+    return 1 if summary.errors or summary.failed else 0
 
 
 if __name__ == "__main__":

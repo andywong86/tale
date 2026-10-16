@@ -63,6 +63,38 @@ occur, and `0` otherwise (including when nothing is due or tasks are skipped).
 A failed command stops that task's catch-up runs without advancing `last_run`
 for the failed occurrence; other due tasks are still processed.
 
+## Execution summaries
+
+Execution mode (including `--dry-run`) ends with a summary, even if nothing is due:
+
+```text
+Summary (tasks): 2 succeeded, 1 failed, 1 skipped, 0 deferred, 3 not due; 0 errors.
+Executions: 5 succeeded, 1 failed, 2 not run.
+```
+
+Task counts apply to the selected tasks, not individual catch-up occurrences:
+
+- **Succeeded:** all planned executions completed successfully.
+- **Failed:** at least one command returned a nonzero exit code, even if earlier
+  catch-up executions succeeded.
+- **Skipped:** a due task was declined at the confirmation prompt.
+- **Deferred:** a due task was previewed in a dry run, or its window closed before
+  all planned executions could start. Any successful partial progress is retained.
+- **Not due:** a valid selected task had no work to execute, including waiting,
+  completed, expired, and newly initialized cron tasks.
+- **Errors:** reported configuration or scheduling errors, separate from command
+  failures. Invalid tasks are not also counted as not due. Configuration errors
+  are still reported across loaded files, even when task names are filtered.
+
+Execution counts reflect returned command exit codes; `not run` counts planned
+executions not attempted because of dry-run mode, declined prompts, closed
+windows, or a preceding catch-up failure. With `collapse = true`, each due task
+plans only one execution, regardless of its number of missed occurrences.
+
+Summaries do not change exit codes: command failures and configuration/scheduling
+errors return `1`; skips, dry runs, and closed execution windows are not failures.
+Listing and cleanup modes do not print execution summaries.
+
 ## Task listing
 
 ```sh
