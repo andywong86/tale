@@ -2,13 +2,57 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from croniter import croniter
+from croniter import CroniterBadDateError, croniter
 
 from .models import DueTask, Task
 from .storage import update_last_run
 from .window import within_window
 
 MAX_CATCH_UP = 10_000
+
+
+def next_occurrence(task: Task, now: datetime) -> datetime | None:
+    """Find the first eligible occurrence, including pending work, without writes."""
+    if task.interval is not None:
+        base = task.last_run if task.last_run is not None else task.not_before
+        if base is None:
+            candidate = now
+        else:
+            if base.utcoffset() is not None:
+                base = base.astimezone(UTC)
+            first = 1 if task.last_run is not None else 0
+            if task.not_before is not None:
+                first = max(first, (task.not_before - base) // task.interval)
+                if base + task.interval * first < task.not_before:
+                    first += 1
+            candidate = base + task.interval * first
+    elif task.cron is not None:
+        if not croniter.is_valid(task.cron):
+            raise ValueError(f"invalid cron expression: {task.cron!r}")
+        base = task.last_run
+        if base is None:
+            # First discovery initializes at the first possible invocation.
+            base = max(now, task.not_before) if task.not_before is not None else now
+        elif task.not_before is not None and base < task.not_before:
+            base = task.not_before - timedelta(microseconds=1)
+        end = task.not_after
+        try:
+            candidate = croniter(
+                task.cron,
+                base,
+                max_years_between_matches=(
+                    max(1, end.year - base.year + 1) if end is not None else 50
+                ),
+            ).get_next(datetime)
+        except CroniterBadDateError:
+            if end is None:
+                raise
+            return None
+    else:
+        if task.last_run is not None:
+            return None
+        candidate = max(now, task.not_before) if task.not_before is not None else now
+    return candidate if within_window(task, candidate) else None
 
 
 def find_due(

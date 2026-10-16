@@ -342,7 +342,7 @@ def test_leap_day_cron_with_future_occurrence_is_retained(tmp_path: Path) -> Non
 
 def test_schedule_error_is_conservative(tmp_path: Path) -> None:
     item = task(tmp_path, "cron", last_run=NOW, not_after=NOW + timedelta(days=1))
-    with patch("tale.cleanup.croniter") as iterator:
+    with patch("tale.scheduler.croniter") as iterator:
         iterator.is_valid.return_value = True
         iterator.return_value.get_next.side_effect = ValueError(
             "cannot determine next date"

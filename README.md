@@ -63,6 +63,36 @@ occur, and `0` otherwise (including when nothing is due or tasks are skipped).
 A failed command stops that task's catch-up runs without advancing `last_run`
 for the failed occurrence; other due tasks are still processed.
 
+## Task listing
+
+```sh
+uv run tale --list            # inspect all tasks, including those not due
+uv run tale --list backup     # consider only tasks named backup
+```
+
+Listing shows each task's schedule, command, last recorded progress, next eligible
+occurrence, source file, and status/reason:
+
+- `due`: pending occurrences and how many executions `collapse` selects.
+- `waiting`: a future `not_before` bound or scheduled occurrence.
+- `new`: a cron task that will initialize without replaying history on its next
+  eligible invocation.
+- `completed`: a successful single-execution task.
+- `expired`: its execution deadline has passed.
+- `exhausted`: no scheduled occurrence remains within the execution window.
+- `error`: scheduling could not be evaluated; other valid tasks are still listed.
+
+For due tasks, `next` is the scheduled occurrence selected for the next execution
+(the latest missed occurrence when collapsed, otherwise the oldest). It may be
+in the past. For new cron tasks it is the next occurrence assuming initialization
+on the next eligible invocation. Times include their UTC offsets.
+
+Listing never runs commands, prompts, deletes tasks, or initializes `last_run`.
+It uses the global lock; `--dry-run` is unnecessary but accepted. `--list` and
+`--cleanup` are mutually exclusive. Configuration/scheduling errors yield exit
+code `1`. Environment tables are not displayed; inline secrets in `cmd` are
+still visible because commands are shown.
+
 ## Locking
 
 On macOS/Unix, every invocation acquires an exclusive, non-blocking advisory lock

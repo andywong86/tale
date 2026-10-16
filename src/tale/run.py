@@ -7,6 +7,7 @@ from datetime import datetime
 from tale.cleanup import cleanup
 from tale.config import config_directory, load_tasks
 from tale.executor import execute
+from tale.listing import list_tasks
 from tale.locking import LockError, invocation_lock
 from tale.scheduler import find_due
 
@@ -22,7 +23,14 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="preview execution or cleanup without changes",
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--list",
+        dest="list_tasks",
+        action="store_true",
+        help="list task statuses without changes",
+    )
+    mode.add_argument(
         "--cleanup",
         action="store_true",
         help="delete obsolete tasks instead of running tasks",
@@ -46,6 +54,9 @@ def _run(args: argparse.Namespace) -> int:
         tasks = [task for task in tasks if task.name in wanted]
 
     now = datetime.now().astimezone()
+    if args.list_tasks:
+        status = list_tasks(tasks, now)
+        return 1 if config_errors or status else 0
     if args.cleanup:
         status = cleanup(tasks, now, dry_run=args.dry_run, yes=args.yes)
         return 1 if config_errors or status else 0

@@ -96,6 +96,7 @@ def test_os_releases_lock_after_process_exit(tmp_path: Path, crash: bool) -> Non
     [
         ["--yes"],
         ["--dry-run"],
+        ["--list"],
         ["--cleanup", "--yes"],
         ["--cleanup", "--dry-run"],
         ["pending", "--yes"],
@@ -138,7 +139,9 @@ def test_busy_lock_is_checked_before_configuration_loading() -> None:
         load.assert_not_called()
 
 
-@pytest.mark.parametrize("stage", ["load", "prompt", "execute", "cleanup", "schedule"])
+@pytest.mark.parametrize(
+    "stage", ["load", "prompt", "execute", "cleanup", "list", "schedule"]
+)
 def test_lock_held_through_entire_cli_invocation(tmp_path: Path, stage: str) -> None:
     directory = config.config_directory()
     directory.mkdir(parents=True)
@@ -176,6 +179,14 @@ def test_lock_held_through_entire_cli_invocation(tmp_path: Path, stage: str) -> 
 
         with patch("tale.run.execute", side_effect=fake_execute):
             assert main(["--yes"]) == 0
+    elif stage == "list":
+
+        def fake_list(*_: object, **__: object) -> int:
+            check_lock()
+            return 0
+
+        with patch("tale.run.list_tasks", side_effect=fake_list):
+            assert main(["--list"]) == 0
     elif stage == "cleanup":
 
         def fake_cleanup(*_: object, **__: object) -> int:
