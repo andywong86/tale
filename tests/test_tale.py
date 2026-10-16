@@ -4,7 +4,9 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tale.config import DEFAULT_CRON, load_tasks
+import pytest
+
+from tale.config import load_tasks
 from tale.executor import execute
 from tale.models import DueTask, Task
 from tale.scheduler import find_due
@@ -31,11 +33,30 @@ last_run = 2026-01-01T00:00:00Z
 
     assert errors == []
     assert len(tasks) == 1
-    assert tasks[0].cron == DEFAULT_CRON
+    assert tasks[0].cron is None
     assert tasks[0].directory == Path.home()
-    assert tasks[0].once is False
+    assert tasks[0].collapse is False
     assert tasks[0].last_run == datetime(2026, 1, 1, tzinfo=UTC)
     assert tasks[0].source == path
+
+
+def test_load_tasks_reads_collapse(tmp_path: Path) -> None:
+    task_file(tmp_path, '[job]\ncmd = "echo hello"\ncollapse = true\n')
+
+    tasks, errors = load_tasks(tmp_path)
+
+    assert errors == []
+    assert tasks[0].collapse is True
+
+
+def test_load_tasks_rejects_invalid_collapse(tmp_path: Path) -> None:
+    task_file(tmp_path, '[job]\ncmd = "echo hello"\ncollapse = "yes"\n')
+
+    tasks, errors = load_tasks(tmp_path)
+
+    assert tasks == []
+    assert len(errors) == 1
+    assert "collapse must be true or false" in errors[0]
 
 
 def test_load_tasks_reports_invalid_task_without_discarding_valid_task(
@@ -94,6 +115,71 @@ cmd = "echo second"
     assert errors == []
 
 
+@pytest.mark.parametrize("persist_initial", [True, False])
+def test_unscheduled_task_is_due_without_being_marked_completed(
+    tmp_path: Path, persist_initial: bool
+) -> None:
+    path = task_file(tmp_path, '[job]\ncmd = "true"\n')
+    tasks, _ = load_tasks(tmp_path)
+    now = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    original = path.read_text()
+
+    due, errors = find_due(tasks, now, persist_initial=persist_initial)
+
+    assert errors == []
+    assert len(due) == 1
+    assert due[0].occurrences == (now,)
+    assert due[0].run_count == 1
+    assert path.read_text() == original
+
+
+@pytest.mark.parametrize("cmd, expected_code", [("true", 0), ("false", 1)])
+def test_unscheduled_task_only_completes_after_success(
+    tmp_path: Path, cmd: str, expected_code: int
+) -> None:
+    task_file(tmp_path, f'[job]\ncmd = "{cmd}"\ndir = "{tmp_path.as_posix()}"\n')
+    tasks, _ = load_tasks(tmp_path)
+    now = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    due, errors = find_due(tasks, now)
+    assert errors == []
+
+    assert execute(due[0]) == [expected_code]
+
+    refreshed, _ = load_tasks(tmp_path)
+    remaining, errors = find_due(refreshed, now)
+    assert errors == []
+    if expected_code == 0:
+        assert refreshed[0].last_run == now
+        assert remaining == []
+    else:
+        assert refreshed[0].last_run is None
+        assert len(remaining) == 1
+
+
+def test_unscheduled_task_with_existing_last_run_is_skipped(tmp_path: Path) -> None:
+    task_file(
+        tmp_path,
+        '[job]\ncmd = "true"\nlast_run = 2026-01-01T00:00:00Z\n',
+    )
+    tasks, _ = load_tasks(tmp_path)
+
+    due, errors = find_due(tasks, datetime(2026, 2, 1, tzinfo=UTC))
+
+    assert errors == []
+    assert due == []
+
+
+@pytest.mark.parametrize("cron", ['""', '" "', "false", "42"])
+def test_load_tasks_rejects_invalid_explicit_cron(tmp_path: Path, cron: str) -> None:
+    task_file(tmp_path, f'[job]\ncmd = "true"\ncron = {cron}\n')
+
+    tasks, errors = load_tasks(tmp_path)
+
+    assert tasks == []
+    assert len(errors) == 1
+    assert "cron must be a non-empty string" in errors[0]
+
+
 def test_find_due_initializes_task_without_replaying_history(tmp_path: Path) -> None:
     path = task_file(tmp_path, '[job]\ncmd = "echo hello"\ncron = "* * * * *"\n')
     tasks, _ = load_tasks(tmp_path)
@@ -130,7 +216,7 @@ last_run = 2026-01-01T11:57:00Z
     assert path.exists()
 
 
-def test_due_task_once_collapses_missed_occurrences(tmp_path: Path) -> None:
+def test_due_task_collapse_collapses_missed_occurrences(tmp_path: Path) -> None:
     task = Task(
         "job", "echo hello", "* * * * *", tmp_path, True, tmp_path / "x.toml", None
     )

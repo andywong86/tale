@@ -18,6 +18,11 @@ def find_due(
 
     for task in tasks:
         try:
+            if task.cron is None:
+                if task.last_run is None:
+                    due.append(DueTask(task, (now,)))
+                continue
+
             if not croniter.is_valid(task.cron):
                 raise ValueError(f"invalid cron expression: {task.cron!r}")
             last = task.last_run

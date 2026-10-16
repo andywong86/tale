@@ -11,7 +11,7 @@ from .storage import update_last_run
 def execute(due: DueTask) -> list[int]:
     """Execute a due task and persist progress after each successful run."""
     due.task.directory.mkdir(parents=True, exist_ok=True)
-    occurrences = (due.latest_occurrence,) if due.task.once else due.occurrences
+    occurrences = (due.latest_occurrence,) if due.task.collapse else due.occurrences
     results: list[int] = []
 
     for occurrence in occurrences:

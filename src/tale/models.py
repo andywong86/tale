@@ -9,9 +9,9 @@ from pathlib import Path
 class Task:
     name: str
     cmd: str
-    cron: str
+    cron: str | None
     directory: Path
-    once: bool
+    collapse: bool
     source: Path
     last_run: datetime | None
 
@@ -24,7 +24,7 @@ class DueTask:
     @property
     def run_count(self) -> int:
         """Number of invocations required for this task this time."""
-        return 1 if self.task.once else len(self.occurrences)
+        return 1 if self.task.collapse else len(self.occurrences)
 
     @property
     def latest_occurrence(self) -> datetime:

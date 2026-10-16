@@ -7,8 +7,6 @@ from typing import Any
 
 from .models import Task
 
-DEFAULT_CRON = "0 0 * * *"
-
 
 class ConfigError(ValueError):
     pass
@@ -54,8 +52,8 @@ def _task_from_table(name: str, raw: Any, source: Path) -> Task:
     if not isinstance(cmd, str) or not cmd.strip():
         raise ConfigError("cmd is required")
 
-    cron = raw.get("cron", DEFAULT_CRON)
-    if not isinstance(cron, str) or not cron.strip():
+    cron = raw.get("cron")
+    if "cron" in raw and (not isinstance(cron, str) or not cron.strip()):
         raise ConfigError("cron must be a non-empty string")
 
     raw_dir = raw.get("dir", "")
@@ -63,9 +61,9 @@ def _task_from_table(name: str, raw: Any, source: Path) -> Task:
         raise ConfigError("dir must be a string")
     directory = Path(raw_dir).expanduser() if raw_dir else Path.home()
 
-    once = raw.get("once", False)
-    if not isinstance(once, bool):
-        raise ConfigError("once must be true or false")
+    collapse = raw.get("collapse", False)
+    if not isinstance(collapse, bool):
+        raise ConfigError("collapse must be true or false")
 
     last_run = raw.get("last_run")
     if isinstance(last_run, str):
@@ -76,4 +74,4 @@ def _task_from_table(name: str, raw: Any, source: Path) -> Task:
     if last_run is not None and not isinstance(last_run, datetime):
         raise ConfigError("last_run must be an ISO datetime")
 
-    return Task(name, cmd, cron, directory, once, source, last_run)
+    return Task(name, cmd, cron, directory, collapse, source, last_run)
