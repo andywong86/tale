@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -12,7 +13,7 @@ from tale.config import load_tasks
 from tale.duration import parse_duration
 from tale.executor import execute
 from tale.run import main
-from tale.scheduler import find_due
+from tale.scheduler import MAX_CATCH_UP, find_due
 
 
 @pytest.mark.parametrize(
@@ -121,7 +122,7 @@ def test_first_discovery_is_due_without_persisting(
     ],
 )
 @pytest.mark.parametrize("collapse", [False, True])
-def test_interval_boundary_and_no_catch_up(
+def test_interval_boundaries_and_collapse(
     tmp_path: Path, elapsed: int, expected: bool, collapse: bool
 ) -> None:
     write_task(
@@ -134,13 +135,17 @@ def test_interval_boundary_and_no_catch_up(
     assert errors == []
     assert bool(due) is expected
     if expected:
-        assert due[0].occurrences == (now,)
-        assert due[0].run_count == 1
+        count = elapsed // 21600
+        base = datetime(2026, 1, 1, tzinfo=UTC)
+        assert due[0].occurrences == tuple(
+            base + timedelta(hours=6 * index) for index in range(1, count + 1)
+        )
+        assert due[0].run_count == (1 if collapse else count)
 
 
 @pytest.mark.parametrize("previous", [None, datetime(2026, 1, 1, tzinfo=UTC)])
 @pytest.mark.parametrize("code", [0, 1])
-def test_execution_records_completion_only_on_success(
+def test_execution_records_scheduled_boundary_only_on_success(
     tmp_path: Path, previous: datetime | None, code: int
 ) -> None:
     settings = f"last_run = {previous.isoformat()}\n" if previous else ""
@@ -156,13 +161,90 @@ def test_execution_records_completion_only_on_success(
         assert execute(due[0]) == [code]
 
     tasks, _ = load_tasks(tmp_path)
-    assert tasks[0].last_run == (finished if code == 0 else previous)
-    due, errors = find_due(tasks, finished + timedelta(hours=6) - timedelta(seconds=1))
+    assert tasks[0].last_run == (scheduled if code == 0 else previous)
+    due, errors = find_due(tasks, scheduled + timedelta(hours=6) - timedelta(seconds=1))
     assert errors == []
     assert bool(due) is (code != 0)
-    due, errors = find_due(tasks, finished + timedelta(hours=6))
+    due, errors = find_due(tasks, scheduled + timedelta(hours=6))
     assert errors == []
     assert len(due) == 1
+
+
+@pytest.mark.parametrize("collapse", [True, False])
+def test_ten_missed_minutes_execute_and_preserve_interval_phase(
+    tmp_path: Path, collapse: bool
+) -> None:
+    path = write_task(
+        tmp_path,
+        f"last_run = 2026-01-01T00:00:00Z\ncollapse = {str(collapse).lower()}\n",
+    )
+    path.write_text(path.read_text().replace('interval = "6h"', 'interval = "1m"'))
+    tasks, _ = load_tasks(tmp_path)
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    now = base + timedelta(minutes=10, seconds=30)
+    due, errors = find_due(tasks, now)
+    assert errors == []
+    assert len(due[0].occurrences) == 10
+    assert execute(due[0]) == [0] * (1 if collapse else 10)
+
+    refreshed, _ = load_tasks(tmp_path)
+    assert refreshed[0].last_run == base + timedelta(minutes=10)
+    assert len(list(tmp_path.glob("tale_job_*.log"))) == (1 if collapse else 10)
+    remaining, errors = find_due(refreshed, now)
+    assert errors == []
+    assert remaining == []
+    remaining, errors = find_due(refreshed, base + timedelta(minutes=11))
+    assert errors == []
+    assert remaining[0].occurrences == (base + timedelta(minutes=11),)
+
+
+def test_interval_failure_preserves_successful_progress_and_retries_pending_runs(
+    tmp_path: Path,
+) -> None:
+    write_task(tmp_path, "last_run = 2026-01-01T00:00:00Z\ncollapse = false\n")
+    tasks, _ = load_tasks(tmp_path)
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    now = base + timedelta(hours=19)
+    due, errors = find_due(tasks, now)
+    assert errors == []
+    with patch("tale.executor.subprocess.run") as run:
+        run.side_effect = [
+            subprocess.CompletedProcess([], 0),
+            subprocess.CompletedProcess([], 7),
+        ]
+        assert execute(due[0]) == [0, 7]
+    assert run.call_count == 2
+
+    refreshed, _ = load_tasks(tmp_path)
+    assert refreshed[0].last_run == base + timedelta(hours=6)
+    remaining, errors = find_due(refreshed, now)
+    assert errors == []
+    assert remaining[0].occurrences == (
+        base + timedelta(hours=12),
+        base + timedelta(hours=18),
+    )
+    assert execute(remaining[0]) == [0, 0]
+    refreshed, _ = load_tasks(tmp_path)
+    assert refreshed[0].last_run == base + timedelta(hours=18)
+
+
+@pytest.mark.parametrize("count", [MAX_CATCH_UP - 1, MAX_CATCH_UP, MAX_CATCH_UP + 1])
+@pytest.mark.parametrize("collapse", [True, False])
+def test_interval_catch_up_limit(tmp_path: Path, count: int, collapse: bool) -> None:
+    path = write_task(tmp_path, "last_run = 2026-01-01T00:00:00Z\n")
+    original = path.read_text()
+    tasks, _ = load_tasks(tmp_path)
+    task = replace(tasks[0], interval=timedelta(seconds=1), collapse=collapse)
+    now = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=count)
+    due, errors = find_due([task], now)
+    if count >= MAX_CATCH_UP:
+        assert due == []
+        assert len(errors) == 1
+        assert "too many missed occurrences" in errors[0]
+    else:
+        assert errors == []
+        assert len(due[0].occurrences) == count
+    assert path.read_text() == original
 
 
 def test_interval_uses_absolute_elapsed_time_across_dst(tmp_path: Path) -> None:
@@ -178,6 +260,7 @@ def test_interval_uses_absolute_elapsed_time_across_dst(tmp_path: Path) -> None:
     due, errors = find_due([task], datetime(2026, 3, 8, 7, tzinfo=zone))
     assert errors == []
     assert len(due) == 1
+    assert due[0].occurrences == (datetime(2026, 3, 8, 11, tzinfo=UTC),)
 
 
 @pytest.mark.parametrize("dry_run", [True, False])

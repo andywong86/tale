@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
     execution_failed = False
     for item in due:
         count = item.run_count
-        if item.task.cron is not None:
+        if item.task.cron is not None or item.task.interval is not None:
             detail = f"{len(item.occurrences)} missed, will run {count} time(s)"
         else:
             detail = f"due, will run {count} time(s)"
@@ -53,7 +53,10 @@ def main(argv: list[str] | None = None) -> int:
         results = execute(item)
         if any(code != 0 for code in results):
             execution_failed = True
-        print(f"Finished {item.task.name}: {results}")
+        if results:
+            print(f"Finished {item.task.name}: {results}")
+        else:
+            print(f"Skipped {item.task.name}: outside its execution window.")
 
     return 1 if config_errors or schedule_errors or execution_failed else 0
 

@@ -7,6 +7,7 @@ from typing import Any
 
 from .duration import parse_duration
 from .models import Task
+from .window import parse_bound
 
 
 class ConfigError(ValueError):
@@ -88,4 +89,38 @@ def _task_from_table(name: str, raw: Any, source: Path) -> Task:
     if last_run is not None and not isinstance(last_run, datetime):
         raise ConfigError("last_run must be an ISO datetime")
 
-    return Task(name, cmd, cron, directory, collapse, source, last_run, interval)
+    bounds: dict[str, datetime] = {}
+    not_after_exclusive = False
+    for key in ("not_before", "not_after"):
+        if key in raw:
+            try:
+                bound, exclusive = parse_bound(raw[key], end=key == "not_after")
+            except (ValueError, OverflowError, OSError) as exc:
+                raise ConfigError(f"invalid {key}: {exc}") from exc
+            bounds[key] = bound
+            if key == "not_after":
+                not_after_exclusive = exclusive
+    not_before = bounds.get("not_before")
+    not_after = bounds.get("not_after")
+    if (
+        not_before is not None
+        and not_after is not None
+        and (
+            not_before > not_after or (not_after_exclusive and not_before == not_after)
+        )
+    ):
+        raise ConfigError("not_before and not_after define an empty execution window")
+
+    return Task(
+        name,
+        cmd,
+        cron,
+        directory,
+        collapse,
+        source,
+        last_run,
+        interval,
+        not_before,
+        not_after,
+        not_after_exclusive,
+    )

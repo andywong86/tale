@@ -15,6 +15,9 @@ class Task:
     source: Path
     last_run: datetime | None
     interval: timedelta | None = None
+    not_before: datetime | None = None
+    not_after: datetime | None = None
+    not_after_exclusive: bool = False
 
 
 @dataclass(frozen=True)

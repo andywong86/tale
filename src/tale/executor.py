@@ -7,16 +7,24 @@ from zoneinfo import ZoneInfo
 
 from .models import DueTask
 from .storage import update_last_run
+from .window import within_window
 
 
 def execute(due: DueTask) -> list[int]:
     """Execute a due task and persist progress after each successful run."""
-    due.task.directory.mkdir(parents=True, exist_ok=True)
-    occurrences = (due.latest_occurrence,) if due.task.collapse else due.occurrences
+    eligible = tuple(
+        occurrence
+        for occurrence in due.occurrences
+        if within_window(due.task, occurrence)
+    )
+    occurrences = eligible[-1:] if due.task.collapse else eligible
     results: list[int] = []
 
     for occurrence in occurrences:
         started = datetime.now(tz=ZoneInfo("UTC"))
+        if not within_window(due.task, started):
+            break
+        due.task.directory.mkdir(parents=True, exist_ok=True)
         stamp = started.strftime("%Y%m%dT%H%M%S%z")
         with tempfile.NamedTemporaryFile(
             mode="w",
@@ -51,7 +59,6 @@ def execute(due: DueTask) -> list[int]:
         results.append(completed.returncode)
         if completed.returncode != 0:
             break
-        last_run = finished if due.task.interval is not None else occurrence
-        update_last_run(due.task.source, due.task.name, last_run)
+        update_last_run(due.task.source, due.task.name, occurrence)
 
     return results
